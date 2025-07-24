@@ -5,7 +5,7 @@ from datetime import datetime
 
 #load_dotenv()
 
-ASANA_PAT = os.getenv('ASANA_PAT')
+ASANA_PAT = os.getenv('ASANA_PERSONAL_ACCESS_TOKEN')
 
 def create_asana_task(name, assignee_email, project_id, due_on=None, description=None, subtasks=None):
     print("Args received:")
