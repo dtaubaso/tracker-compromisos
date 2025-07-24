@@ -275,7 +275,7 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
     }
     
     print(f"Opening modal with trigger_id: {trigger_id}")
-    print(f"Modal data being sent: {json.dumps(data, indent=2)}")
+    #print(f"Modal data being sent: {json.dumps(data, indent=2)}")
     
     response = requests.post(
         'https://slack.com/api/views.open',
