@@ -128,7 +128,7 @@ def get_user_by_email(email):
                 if user_data.get('email', '').lower() == email.lower():
                     print(f"Usuario encontrado: {user_data.get('name')} - {user_data.get('email')}")
                     return user['gid']
-    
+    print(response.text)
     print(f"No se encontró usuario con email: {email}")
     return None
 
