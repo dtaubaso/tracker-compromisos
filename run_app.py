@@ -2,7 +2,7 @@ import os
 import sys
 from main import app
 import logging
-
+"""
 if __name__ == '__main__':
     # Configuración para Windows
     if sys.platform == 'win32':
@@ -35,3 +35,4 @@ if __name__ == '__main__':
         print(f"Error starting server: {e}")
         import traceback
         traceback.print_exc()
+"""

@@ -5,6 +5,8 @@ import os
 
 #load_dotenv()
 
+"""
+
 app = Flask(__name__)
 
 # Deshabilitar la verificación de firma temporalmente para debugging
@@ -82,3 +84,5 @@ if __name__ == '__main__':
     
     # Usar servidor de desarrollo simple
     app.run(host='127.0.0.1', port=5000, debug=False)
+
+"""
