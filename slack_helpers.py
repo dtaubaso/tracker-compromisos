@@ -115,15 +115,18 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
         asana_projects = {}
     
     # Crear opciones para el selector de proyectos
-    project_options = []
-    for project_name, project_id in sorted(asana_projects.items()):
-        project_options.append({
-            "text": {
-                "type": "plain_text",
-                "text": project_name[:75]  # Slack límite de 75 caracteres
-            },
-            "value": project_id
-        })
+    full_project_options = [
+    {
+        "text": {
+            "type": "plain_text",
+            "text": project_name[:75]
+        },
+        "value": project_id
+    }
+    for project_name, project_id in sorted(asana_projects.items())
+]
+
+    project_options = full_project_options[:100]  # Slack permite como máximo 100 opciones
     
     # Obtener el proyecto por defecto basado en el canal
     from channel_map import get_asana_project_id
@@ -169,7 +172,7 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
                         "text": "Seleccionar proyecto"
                     },
                     "options": project_options,
-                    "initial_option": next((opt for opt in project_options if opt["value"] == default_project_id), None) if default_project_id else None
+                    **({"initial_option": next((opt for opt in project_options if opt["value"] == default_project_id), None)} if default_project_id and any(opt["value"] == default_project_id for opt in project_options) else {})
                 }
             },
             {
