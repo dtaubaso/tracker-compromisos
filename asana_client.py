@@ -8,6 +8,8 @@ from datetime import datetime
 ASANA_PAT = os.getenv('ASANA_PAT')
 
 def create_asana_task(name, assignee_email, project_id, due_on=None, description=None, subtasks=None):
+    print("Args received:")
+    print(f"name={name}, assignee_email={assignee_email}, project_id={project_id}, due_on={due_on}, description={description}, subtasks={subtasks}")
     headers = {
         'Authorization': f'Bearer {ASANA_PAT}',
         'Content-Type': 'application/json'
