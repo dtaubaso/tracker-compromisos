@@ -1,9 +1,9 @@
 import os
 import json
 import requests
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN')
 

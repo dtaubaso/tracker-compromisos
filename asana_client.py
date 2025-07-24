@@ -1,9 +1,9 @@
 import os
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 ASANA_PAT = os.getenv('ASANA_PAT')
 

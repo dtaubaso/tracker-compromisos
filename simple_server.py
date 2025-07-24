@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import json
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
-load_dotenv()
+#load_dotenv()
 
 app = Flask(__name__)
 

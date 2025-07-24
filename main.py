@@ -5,13 +5,13 @@ import hmac
 import time
 import threading
 from flask import Flask, request, jsonify
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from llm_evaluator import evaluate_commitment
 from slack_helpers import post_message_with_button, post_thread_message, get_user_info, open_task_dialog
 from asana_client import create_asana_task
 from channel_map import get_asana_project_id
 
-load_dotenv()
+#load_dotenv()
 
 app = Flask(__name__)
 
