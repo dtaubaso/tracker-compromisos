@@ -108,7 +108,7 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
         'Authorization': f'Bearer {SLACK_BOT_TOKEN}',
         'Content-Type': 'application/json'
     }
-    
+    msg_url = f"https://nomadicseo.slack.com/archives/{channel}/p{thread_ts.replace(".","")}"
     # Cargar proyectos de Asana
     current_dir = os.path.dirname(os.path.abspath(__file__))
     asana_projects_path = os.path.join(current_dir, 'asana_pj.json')
@@ -208,7 +208,7 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
                     "type": "plain_text_input",
                     "action_id": "description_input",
                     "multiline": True,
-                    "initial_value": f"Mensaje original: {original_message}",
+                    "initial_value": f"Mensaje original: {original_message} en {msg_url}",
                     "placeholder": {
                         "type": "plain_text",
                         "text": "Agrega una descripción detallada"
