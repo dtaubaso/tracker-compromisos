@@ -1,6 +1,7 @@
-import os
+import os, logging
 import requests
 from datetime import datetime
+from utils import send_slack
 #from dotenv import load_dotenv
 
 #load_dotenv()
@@ -8,8 +9,8 @@ from datetime import datetime
 ASANA_PAT = os.getenv('ASANA_PERSONAL_ACCESS_TOKEN')
 
 def create_asana_task(name, assignee_email, project_id, due_on=None, description=None, subtasks=None):
-    print("Args received:")
-    print(f"name={name}, assignee_email={assignee_email}, project_id={project_id}, due_on={due_on}, description={description}, subtasks={subtasks}")
+    logging.info("Args received:")
+    logging.info(f"name={name}, assignee_email={assignee_email}, project_id={project_id}, due_on={due_on}, description={description}, subtasks={subtasks}")
     headers = {
         'Authorization': f'Bearer {ASANA_PAT}',
         'Content-Type': 'application/json'
@@ -28,13 +29,13 @@ def create_asana_task(name, assignee_email, project_id, due_on=None, description
     
     assignee_gid = None
     if assignee_email:
-        print(f"Buscando usuario en Asana con email: {assignee_email}")
+        logging.info(f"Buscando usuario en Asana con email: {assignee_email}")
         assignee_gid = get_user_by_email(assignee_email)
         if assignee_gid:
-            print(f"Usuario encontrado en Asana: {assignee_gid}")
+            logging.info(f"Usuario encontrado en Asana: {assignee_gid}")
             task_data['data']['assignee'] = assignee_gid
         else:
-            print(f"Usuario NO encontrado en Asana con email: {assignee_email}")
+            logging.warning(f"Usuario NO encontrado en Asana con email: {assignee_email}")
     
     if due_on:
         try:
@@ -90,11 +91,12 @@ def create_subtask(parent_task_gid, name, assignee_gid=None):
     )
     
     if response.status_code != 201:
-        print(f"Error creating subtask: {response.status_code} - {response.text}")
+        logging.error(f"Error creating subtask: {response.status_code} - {response.text}")
+        send_slack(f"Error creating subtask: {response.status_code} - {response.text}")
 
 def get_user_by_email(email):
     if not email:
-        print("No se proporcionó email")
+        logging.warning("No se proporcionó email")
         return None
         
     headers = {
@@ -104,7 +106,8 @@ def get_user_by_email(email):
     try:
         workspace_gid = get_workspace_gid()
     except Exception as e:
-        print(f"Error obteniendo workspace: {e}")
+        logging.error(f"Error obteniendo workspace: {e}")
+        send_slack(f"Error obteniendo workspace: {e}")
         return None
     
     # Intentar buscar por email exacto
@@ -115,7 +118,7 @@ def get_user_by_email(email):
     
     if response.status_code == 200:
         all_users = response.json()['data']
-        print(f"Total usuarios en workspace: {len(all_users)}")
+        logging.info(f"Total usuarios en workspace: {len(all_users)}")
         
         # Buscar coincidencia exacta por email
         for user in all_users:
@@ -126,10 +129,9 @@ def get_user_by_email(email):
             if user_detail.status_code == 200:
                 user_data = user_detail.json()['data']
                 if user_data.get('email', '').lower() == email.lower():
-                    print(f"Usuario encontrado: {user_data.get('name')} - {user_data.get('email')}")
+                    logging.info(f"Usuario encontrado: {user_data.get('name')} - {user_data.get('email')}")
                     return user['gid']
-    print(response.text)
-    print(f"No se encontró usuario con email: {email}")
+    logging.warning(f"No se encontró usuario con email: {email}")
     return None
 
 def get_workspace_gid():

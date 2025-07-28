@@ -1,6 +1,8 @@
 import os
 import json
 import requests
+import logging
+from utils import send_slack
 #from dotenv import load_dotenv
 
 #load_dotenv()
@@ -68,7 +70,8 @@ def evaluate_with_openai(prompt):
                 return json.loads(content[json_start:json_end])
             return None
     else:
-        print(f"Error calling OpenAI API: {response.status_code} - {response.text}")
+        logging.error(f"Error calling OpenAI API: {response.status_code} - {response.text}")
+        send_slack(f"Error calling OpenAI API: {response.status_code} - {response.text}")
         return None
 
 def evaluate_with_claude(prompt):
@@ -108,5 +111,6 @@ def evaluate_with_claude(prompt):
                 return json.loads(content[json_start:json_end])
             return None
     else:
-        print(f"Error calling Claude API: {response.status_code} - {response.text}")
+        logging.error(f"Error calling Claude API: {response.status_code} - {response.text}")
+        send_slack(f"Error calling Claude API: {response.status_code} - {response.text}")
         return None

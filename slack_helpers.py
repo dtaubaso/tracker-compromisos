@@ -1,6 +1,8 @@
 import os
 import json
 import requests
+import logging
+from utils import send_slack
 #from dotenv import load_dotenv
 
 #load_dotenv()
@@ -49,7 +51,8 @@ def post_message_with_button(channel, thread_ts, original_message, commitment_da
     )
     
     if response.status_code != 200 or not response.json().get('ok'):
-        print(f"Error posting message with button: {response.json()}")
+        logging.error(f"Error posting message with button: {response.json()}")
+        send_slack(f"Error posting message with button: {response.json()}")
     
     return response.json()
 
@@ -72,7 +75,8 @@ def post_thread_message(channel, thread_ts, text):
     )
     
     if response.status_code != 200 or not response.json().get('ok'):
-        print(f"Error posting thread message: {response.json()}")
+        logging.error(f"Error posting thread message: {response.json()}")
+        send_slack(f"Error posting thread message: {response.json()}")
     
     return response.json()
 
@@ -95,7 +99,8 @@ def get_user_info(user_id):
     if response.status_code == 200 and response.json().get('ok'):
         return response.json().get('user', {})
     else:
-        print(f"Error getting user info: {response.json()}")
+        logging.error(f"Error getting user info: {response.json()}")
+        send_slack(f"Error getting user info: {response.json()}")
         return {}
 
 def open_task_dialog(trigger_id, commitment_data, original_message, channel, thread_ts):
@@ -274,8 +279,8 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
         "view": view
     }
     
-    print(f"Opening modal with trigger_id: {trigger_id}")
-    print("Modal data being sent: " + json.dumps(data, separators=(',', ':')))
+    logging.info(f"Opening modal with trigger_id: {trigger_id}")
+    #logging.info("Modal data being sent: " + json.dumps(data, separators=(',', ':')))
     
     response = requests.post(
         'https://slack.com/api/views.open',
@@ -283,10 +288,11 @@ def open_task_dialog(trigger_id, commitment_data, original_message, channel, thr
         json=data
     )
     
-    print(f"Response status code: {response.status_code}")
-    print(f"Response body: {response.json()}")
+    logging.info(f"Response status code: {response.status_code}")
+    logging.info(f"Response body: {response.json()}")
     
     if response.status_code != 200 or not response.json().get('ok'):
-        print(f"Error opening dialog: {response.json()}")
+        logging.error(f"Error opening dialog: {response.json()}")
+        send_slack(f"Error opening dialog: {response.json()}")
     
     return response.json()

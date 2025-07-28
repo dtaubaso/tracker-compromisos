@@ -4,12 +4,22 @@ import hashlib
 import hmac
 import time
 import threading
+import logging
+import requests
+import traceback
 from flask import Flask, request, jsonify
 #from dotenv import load_dotenv
 from llm_evaluator import evaluate_commitment
 from slack_helpers import post_message_with_button, post_thread_message, get_user_info, open_task_dialog
 from asana_client import create_asana_task
 from channel_map import get_asana_project_id
+import google.cloud.logging
+from utils import send_slack
+
+# Inicializa el cliente de Cloud Logging
+logging_client = google.cloud.logging.Client(project='gothic-calling-325317')
+logging_client.setup_logging()
+
 
 #load_dotenv()
 
@@ -18,11 +28,11 @@ app = Flask(__name__)
 SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN')
 SLACK_SIGNING_SECRET = os.getenv('SLACK_SIGNING_SECRET')
 
-print(f"=== STARTING SLACK-ASANA INTEGRATION ===")
-print(f"SLACK_BOT_TOKEN configured: {'Yes' if SLACK_BOT_TOKEN else 'No'}")
-print(f"SLACK_SIGNING_SECRET configured: {'Yes' if SLACK_SIGNING_SECRET else 'No'}")
-print(f"Bot token starts with: {SLACK_BOT_TOKEN[:10]}..." if SLACK_BOT_TOKEN else "No bot token")
-print(f"="*40)
+logging.info(f"=== STARTING SLACK-ASANA INTEGRATION ===")
+logging.info(f"SLACK_BOT_TOKEN configured: {'Yes' if SLACK_BOT_TOKEN else 'No'}")
+logging.info(f"SLACK_SIGNING_SECRET configured: {'Yes' if SLACK_SIGNING_SECRET else 'No'}")
+logging.info(f"Bot token starts with: {SLACK_BOT_TOKEN[:10]}..." if SLACK_BOT_TOKEN else "No bot token")
+logging.info(f"="*40)
 
 # Cache para evitar procesar eventos duplicados
 processed_events = set()
@@ -101,42 +111,48 @@ def process_asana_task_creation(task_data):
         )
         
     except Exception as e:
-        print(f"Error creando tarea: {str(e)}")
+        logging.error(f"Error creando tarea: {str(e)}")
+        logging.exception("Exception details:")
         post_thread_message(
             channel=task_data['channel'],
             thread_ts=task_data['thread_ts'],
             text=f"❌ Error al crear la tarea: {str(e)}"
         )
+        send_slack(f"Error creando tarea: {str(e)}")
 
 @app.route('/slack/events', methods=['POST'])
 def slack_events():
-    print("=== SLACK EVENTS ENDPOINT HIT ===")
-    print(f"Headers: {dict(request.headers)}")
-    print(f"Content-Type: {request.content_type}")
+    logging.info("=== SLACK EVENTS ENDPOINT HIT ===")
+    logging.info(f"Headers: {dict(request.headers)}")
+    logging.info(f"Content-Type: {request.content_type}")
     
     if request.content_type != 'application/json':
-        print(f"ERROR: Invalid content type: {request.content_type}")
+        logging.error(f"ERROR: Invalid content type: {request.content_type}")
+        send_slack(f"ERROR: Invalid content type: {request.content_type}")
         return jsonify({'error': 'Content-Type must be application/json'}), 400
     
     timestamp = request.headers.get('X-Slack-Request-Timestamp', '')
     signature = request.headers.get('X-Slack-Signature', '')
     
     if abs(time.time() - float(timestamp)) > 60 * 5:
-        print("ERROR: Request timestamp too old")
+        logging.error("ERROR: Request timestamp too old")
+        send_slack("ERROR: Request timestamp too old")
         return jsonify({'error': 'Request timestamp too old'}), 400
     
     # Obtener el body raw para verificación
     request_body = request.get_data(as_text=True)
     
     if not verify_slack_signature(request_body, timestamp, signature):
-        print("ERROR: Invalid signature")
+        logging.error("ERROR: Invalid signature")
+        send_slack("ERROR: Invalid signature")
         return jsonify({'error': 'Invalid signature'}), 403
     
     # Parsear el JSON después de verificar la firma
     try:
         data = json.loads(request_body)
     except json.JSONDecodeError:
-        print("ERROR: Invalid JSON")
+        logging.error("ERROR: Invalid JSON")
+        send_slack("ERROR: Invalid JSON")
         return jsonify({'error': 'Invalid JSON'}), 400
     
     if data.get('type') == 'url_verification':
@@ -181,21 +197,22 @@ def slack_events():
 
 @app.route('/slack/interactions', methods=['POST'])
 def slack_interactions():
-    print("=== INTERACTION ENDPOINT HIT ===")
+    logging.info("=== INTERACTION ENDPOINT HIT ===")
     timestamp = request.headers.get('X-Slack-Request-Timestamp', '')
     signature = request.headers.get('X-Slack-Signature', '')
     
     if abs(time.time() - float(timestamp)) > 60 * 5:
-        print("ERROR: Request timestamp too old")
+        logging.error("ERROR: Request timestamp too old")
         return jsonify({'error': 'Request timestamp too old'}), 400
     
     if not verify_slack_signature(request.get_data(as_text=True), timestamp, signature):
-        print("ERROR: Invalid signature")
+        logging.error("ERROR: Invalid signature")
+        send_slack("ERROR: Invalid signature")
         return jsonify({'error': 'Invalid signature'}), 403
     
     payload = json.loads(request.form.get('payload'))
-    print(f"Received interaction type: {payload.get('type')}")
-    print(f"Full payload: {json.dumps(payload, indent=2)}")
+    logging.info(f"Received interaction type: {payload.get('type')}")
+    logging.info(f"Full payload: {json.dumps(payload, separators=(',', ':'))}")
     
     if payload['type'] == 'interactive_message':
         action = payload['actions'][0]
@@ -208,14 +225,14 @@ def slack_interactions():
             thread_ts = action_value.get('thread_ts')
             trigger_id = payload['trigger_id']
             
-            print(f"Channel: {channel}")
-            print(f"Thread TS: {thread_ts}")
-            print(f"Trigger ID: {trigger_id}")
-            print(f"Commitment data: {commitment_data}")
+            logging.info(f"Channel: {channel}")
+            logging.info(f"Thread TS: {thread_ts}")
+            logging.info(f"Trigger ID: {trigger_id}")
+            logging.info(f"Commitment data: {commitment_data}")
             
             # Abrir el diálogo modal
             try:
-                print("Attempting to open dialog...")
+                logging.info("Attempting to open dialog...")
                 result = open_task_dialog(
                     trigger_id=trigger_id,
                     commitment_data=commitment_data,
@@ -223,23 +240,24 @@ def slack_interactions():
                     channel=channel,
                     thread_ts=thread_ts
                 )
-                print(f"Dialog open result: {result}")
+                logging.info(f"Dialog open result: {result}")
                 if not result.get('ok'):
-                    print(f"Error opening dialog: {result}")
-                    print(f"Error details: {result.get('error', 'No error details')}")
+                    logging.error(f"Error opening dialog: {result}")
+                    logging.error(f"Error details: {result.get('error', 'No error details')}")
                 else:
-                    print("Dialog opened successfully!")
+                    logging.info("Dialog opened successfully!")
                 
             except Exception as e:
-                print(f"Exception opening dialog: {str(e)}")
-                import traceback
-                print(f"Traceback: {traceback.format_exc()}")
+                logging.error(f"Exception opening dialog: {str(e)}")
+                logging.exception("Exception details:")
+                send_slack(f"Exception opening dialog: {str(e)}")
+                #print(f"Traceback: {traceback.format_exc()}")
             
             return '', 200
     
     elif payload['type'] == 'view_closed':
         # Usuario cerró el modal sin enviar
-        print("Usuario canceló la creación de tarea")
+        logging.warning("Usuario canceló la creación de tarea")
         return jsonify({'status': 'ok'})
     
     elif payload['type'] == 'view_submission':
